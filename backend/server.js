@@ -2,7 +2,7 @@ import express from 'express';
 import { initDB } from './models/index.js';
 import path from 'path';
 import {fileURLToPath} from 'url'
-import { usersRoute, appsRoute, roleRoute, authRoute, googleRoute, userTypesRoute, sessionsRoute, mqttRoute, logsRoute } from './routes/index.js';
+import { usersRoute, appsRoute, roleRoute, authRoute, googleRoute, userTypesRoute, sessionsRoute, mqttRoute, logsRoute, analyticsRoute } from './routes/index.js';
 import logger from './middleware/logger.js';
 import errorHandler from './middleware/error.js';
 import notFound from './middleware/notFound.js';
@@ -68,6 +68,7 @@ app.use('/api/type', userTypesRoute);
 app.use('/api/sessions', sessionsRoute);
 app.use('/api/mqtt', mqttRoute);
 app.use('/api/logs', logsRoute);
+app.use('/api/analytics', analyticsRoute);
 
 //error handler middleware
 app.use(notFound);

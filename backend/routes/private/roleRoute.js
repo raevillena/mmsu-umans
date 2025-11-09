@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import {getRoles, addRole, updateRole, deleteRole } from '../../controllers/rolesController.js';
+import {getRoles, getRolesPaginated, addRole, updateRole, deleteRole } from '../../controllers/rolesController.js';
 import { authenticateAdmin } from '../../middleware/auth.js';
 
 /**
@@ -41,6 +41,59 @@ import { authenticateAdmin } from '../../middleware/auth.js';
  *         description: Unauthorized - Admin access required
  */
 router.get('/', authenticateAdmin, getRoles);
+
+/**
+ * @openapi
+ * /api/roles/paginated:
+ *   get:
+ *     summary: Get paginated roles
+ *     tags: [Role Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *         description: Number of roles per page
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: Paginated roles retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 roles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of roles
+ *                 totalPages:
+ *                   type: integer
+ *                   description: Total number of pages
+ *                 currentPage:
+ *                   type: integer
+ *                   description: Current page number
+ *       400:
+ *         description: Invalid pagination parameters
+ *       401:
+ *         description: Unauthorized - Admin access required
+ */
+router.get('/paginated', authenticateAdmin, getRolesPaginated);
 
 /**
  * @openapi

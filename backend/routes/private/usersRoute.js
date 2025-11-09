@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { getUsers, getUserByEmail, updateUser, deleteUser, changePassword } from '../../controllers/usersController.js';
+import { getUsers, getUsersPaginated, getUserByEmail, updateUser, deleteUser, changePassword } from '../../controllers/usersController.js';
 import { authenticateAdmin } from '../../middleware/auth.js';
 import { validateChangePassword } from '../../middleware/validation.js';
 
@@ -61,6 +61,59 @@ import { validateChangePassword } from '../../middleware/validation.js';
  *         description: Unauthorized - Admin access required
  */
 router.get('/', authenticateAdmin, getUsers);
+
+/**
+ * @openapi
+ * /api/users/paginated:
+ *   get:
+ *     summary: Get paginated users
+ *     tags: [User Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *         description: Number of users per page
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: Paginated users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of users
+ *                 totalPages:
+ *                   type: integer
+ *                   description: Total number of pages
+ *                 currentPage:
+ *                   type: integer
+ *                   description: Current page number
+ *       400:
+ *         description: Invalid pagination parameters
+ *       401:
+ *         description: Unauthorized - Admin access required
+ */
+router.get('/paginated', authenticateAdmin, getUsersPaginated);
 
 /**
  * @openapi

@@ -53,6 +53,7 @@ export const login = async (req, res, next) => {
         // Remove password from response
         const userResponse = user.toJSON();
         delete userResponse.password;
+        delete userResponse.role;
 
         res.status(200).json({
             msg: 'Login Successfull',

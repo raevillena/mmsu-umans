@@ -16,6 +16,37 @@ export const getRoles = async (req, res, next) => {
     }
 };
 
+// PAGINATED
+// get all roles with pagination
+// GET /api/roles/paginated
+export const getRolesPaginated = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        if (!isNaN(limit) && limit > 0) {
+            const { count, rows } = await Roles.findAndCountAll({
+                where: { isActive: true },
+                offset: offset,
+                limit: limit,
+                order: [['createdAt', 'DESC']],
+            });
+            return res.json({
+                roles: rows,
+                total: count,
+                totalPages: Math.ceil(count / limit),
+                currentPage: page
+            });
+        }
+
+        res.status(400).send('Invalid limit');
+    } catch (error) {
+        error.status = 400;
+        return next(error);
+    }
+};
+
 // create new app registry
 // POST /api/roles
 export const addRole = async (req, res, next) => {

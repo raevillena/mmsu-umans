@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import {getSessions, deleteSession } from '../../controllers/sessionController.js';
+import {getSessions, getSessionsPaginated, deleteSession } from '../../controllers/sessionController.js';
 import { authenticateAdmin } from '../../middleware/auth.js';
 
 /**
@@ -45,6 +45,59 @@ import { authenticateAdmin } from '../../middleware/auth.js';
  *         description: Bad request
  */
 router.get('/', authenticateAdmin, getSessions);
+
+/**
+ * @openapi
+ * /api/sessions/paginated:
+ *   get:
+ *     summary: Get paginated sessions
+ *     tags: [Session Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *         description: Number of sessions per page
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: Paginated sessions retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of sessions
+ *                 totalPages:
+ *                   type: integer
+ *                   description: Total number of pages
+ *                 currentPage:
+ *                   type: integer
+ *                   description: Current page number
+ *       400:
+ *         description: Invalid pagination parameters
+ *       401:
+ *         description: Unauthorized - Admin access required
+ */
+router.get('/paginated', authenticateAdmin, getSessionsPaginated);
 
 /**
  * @openapi

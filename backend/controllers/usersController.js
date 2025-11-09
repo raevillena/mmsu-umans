@@ -23,6 +23,37 @@ export const getUsers = async (req, res, next) => {
     }
 };
 
+// PAGINATED
+// get all users with pagination
+// GET /api/users/paginated
+export const getUsersPaginated = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        if (!isNaN(limit) && limit > 0) {
+            const { count, rows } = await User.findAndCountAll({
+                where: { isActive: true },
+                offset: offset,
+                limit: limit,
+                order: [['createdAt', 'DESC']],
+            });
+            return res.json({
+                users: rows,
+                total: count,
+                totalPages: Math.ceil(count / limit),
+                currentPage: page
+            });
+        }
+
+        res.status(400).send('Invalid limit');
+    } catch (error) {
+        error.status = 400;
+        return next(error);
+    }
+};
+
 // get user by email
 // GET /api/users/:email
 export const getUserByEmail = async (req, res, next) => {

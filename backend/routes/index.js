@@ -7,6 +7,7 @@ import googleRoute from './public/googleRoute.js'
 import sessionsRoute from './private/sessionsRoute.js'
 import mqttRoute from './private/mqttRoute.js'
 import logsRoute from './private/logsRoute.js'
+import analyticsRoute from './private/analyticsRoute.js'
 
 export {
     usersRoute,
@@ -17,5 +18,6 @@ export {
     googleRoute,
     sessionsRoute,
     mqttRoute,
-    logsRoute
+    logsRoute,
+    analyticsRoute
 }
