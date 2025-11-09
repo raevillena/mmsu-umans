@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import {getApps, createApp, updateApp, deleteApp, getAppById } from '../../controllers/appsController.js';
+import {getApps, createApp, updateApp, deleteApp, getAppById, getAppsPaginated } from '../../controllers/appsController.js';
 import { authenticateAdmin } from '../../middleware/auth.js';
 
 /**
@@ -55,6 +55,63 @@ import { authenticateAdmin } from '../../middleware/auth.js';
  *         description: Unauthorized - Admin access required
  */
 router.get('/', authenticateAdmin, getApps);
+
+/**
+ * @openapi
+ * /api/apps/paginated:
+ *   get:
+ *     summary: Get all applications with pagination
+ *     tags: [Application Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *         description: Number of applications per page
+ *         example: 10
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Filter by active status (true for active, false for inactive)
+ *         example: true
+ *     responses:
+ *       200:
+ *         description: Paginated list of applications retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 apps:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 total:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 currentPage:
+ *                   type: integer
+ *       400:
+ *         description: Invalid limit parameter
+ *       401:
+ *         description: Unauthorized - Admin access required
+ */
+router.get('/paginated', authenticateAdmin, getAppsPaginated);
 
 /**
  * @openapi

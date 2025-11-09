@@ -24,10 +24,15 @@ export const getRolesPaginated = async (req, res, next) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
+        
+        // Support filtering by isActive status (defaults to true for backward compatibility)
+        const isActive = req.query.isActive !== undefined 
+            ? req.query.isActive === 'true' || req.query.isActive === true
+            : true;
 
         if (!isNaN(limit) && limit > 0) {
             const { count, rows } = await Roles.findAndCountAll({
-                where: { isActive: true },
+                where: { isActive: isActive },
                 offset: offset,
                 limit: limit,
                 order: [['createdAt', 'DESC']],

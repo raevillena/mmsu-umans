@@ -1,33 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Pagination, Box
 } from "@mui/material";
 import SessionsRow from "./SessionsRow";
-import sessionsApi from "../../api/sessionsApi";
+import { getSessionsPaginated } from "../../store/slices/sessionsSlice";
 
 const SessionsTable = ({ apps, users, loadingRowId }) => {
-  const [sessions, setSessions] = useState([]);
+  const dispatch = useDispatch();
+  const { paginatedPages, totalPages, loadedPages, loading } = useSelector((state) => state.sessions);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
 
-  const fetchSessions = async (pageNum) => {
-    setLoading(true);
-    try {
-      const response = await sessionsApi.getSessionsPaginated(pageNum);
-      setSessions(response.sessions);
-      setTotalPages(response.totalPages);
-      setPage(pageNum);
-    } catch (err) {
-      console.error("Failed to fetch sessions:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Get current page data from cache (ensure page is a number)
+  const pageNum = Number(page);
+  const currentPageSessions = paginatedPages[pageNum] || [];
 
+  // Fetch page if not cached
   useEffect(() => {
-    fetchSessions(1);
-  }, []);
+    const pageNum = Number(page);
+    if (!loadedPages.includes(pageNum) && !loading) {
+      dispatch(getSessionsPaginated(pageNum));
+    }
+  }, [page, loadedPages, loading, dispatch]);
+
+  const handlePageChange = (_, value) => {
+    setPage(value);
+  };
 
   return (
     <Box sx={{ mt: 1 }}>
@@ -43,7 +41,7 @@ const SessionsTable = ({ apps, users, loadingRowId }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {sessions.map(session => (
+            {currentPageSessions.map(session => (
               <SessionsRow key={session.id} session={session} users={users} apps={apps} loadingRowId={loadingRowId} />
             ))}
           </TableBody>
@@ -52,10 +50,11 @@ const SessionsTable = ({ apps, users, loadingRowId }) => {
 
       <Box sx={{ mt: 2, mb: 2, display: "flex", justifyContent: "center" }}>
         <Pagination
-          count={totalPages}
+          count={totalPages || 1}
           page={page}
-          onChange={(_, value) => fetchSessions(value)}
+          onChange={handlePageChange}
           color="primary"
+          disabled={loading}
         />
       </Box>
     </Box>

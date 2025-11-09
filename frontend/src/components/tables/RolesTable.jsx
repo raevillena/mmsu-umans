@@ -1,33 +1,50 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Pagination, Box
 } from "@mui/material";
 import RoleRow from "./RoleRow";
-import rolesApi from "../../api/rolesApi";
+import { getRolesPaginated } from "../../store/slices/rolesSlice";
 
 const RolesTable = ({ apps, users, userTypes, loadingRowId }) => {
-  const [roles, setRoles] = useState([]);
+  const dispatch = useDispatch();
+  const { paginatedPages, totalPages, loadedPages, loading } = useSelector((state) => state.roles);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
 
-  const fetchRoles = async (pageNum) => {
-    setLoading(true);
-    try {
-      const response = await rolesApi.getRolesPaginated(pageNum);
-      setRoles(response.roles);
-      setTotalPages(response.totalPages);
-      setPage(pageNum);
-    } catch (err) {
-      console.error("Failed to fetch roles:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Get current page data from cache (ensure page is a number)
+  const pageNum = Number(page);
+  const rawRoles = paginatedPages[pageNum] || [];
 
+  // Enrich roles with display names (appName, userName)
+  const currentPageRoles = useMemo(() => {
+    if (!rawRoles || rawRoles.length === 0) return [];
+    
+    const validUsers = users && users[0] !== 'empty' ? users : [];
+    const validApps = apps && apps[0] !== 'empty' ? apps : [];
+    
+    return rawRoles.map(role => {
+      const user = validUsers.find(u => u.id === role.userId);
+      const app = validApps.find(a => a.id === role.appsId);
+      
+      return {
+        ...role,
+        userName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
+        appName: app ? app.name : 'Unknown',
+      };
+    });
+  }, [rawRoles, users, apps]);
+
+  // Fetch page if not cached
   useEffect(() => {
-    fetchRoles(1);
-  }, []);
+    const pageNum = Number(page);
+    if (!loadedPages.includes(pageNum) && !loading) {
+      dispatch(getRolesPaginated(pageNum));
+    }
+  }, [page, loadedPages, loading, dispatch]);
+
+  const handlePageChange = (_, value) => {
+    setPage(value);
+  };
 
   return (
     <Box sx={{ mt: 1 }}>
@@ -45,7 +62,7 @@ const RolesTable = ({ apps, users, userTypes, loadingRowId }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {roles.map(role => (
+            {currentPageRoles.map(role => (
               <RoleRow key={role.id} role={role} users={users} apps={apps} userTypes={userTypes} loadingRowId={loadingRowId} />
             ))}
           </TableBody>
@@ -54,10 +71,11 @@ const RolesTable = ({ apps, users, userTypes, loadingRowId }) => {
 
       <Box sx={{ mt: 2, mb: 2, display: "flex", justifyContent: "center" }}>
         <Pagination
-          count={totalPages}
+          count={totalPages || 1}
           page={page}
-          onChange={(_, value) => fetchRoles(value)}
+          onChange={handlePageChange}
           color="primary"
+          disabled={loading}
         />
       </Box>
     </Box>

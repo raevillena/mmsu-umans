@@ -66,7 +66,7 @@ export default function UserTypes() {
   //add user function
   const handleAddApp = (userTypeData) => {
     dispatch(addUserType(userTypeData)); // Dispatch the action to add a user
-    handleClose(); // Close the dialog
+    // Don't close here - let the dialog handle closing based on checkbox state
   };
 
 

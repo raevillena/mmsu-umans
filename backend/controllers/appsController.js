@@ -26,6 +26,42 @@ export const getApps = async (req, res, next) => {
     }
 };
 
+// PAGINATED
+// get all apps with pagination
+// GET /api/apps/paginated
+export const getAppsPaginated = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+        
+        // Support filtering by isActive status (defaults to true for backward compatibility)
+        const isActive = req.query.isActive !== undefined 
+            ? req.query.isActive === 'true' || req.query.isActive === true
+            : true;
+
+        if (!isNaN(limit) && limit > 0) {
+            const { count, rows } = await Apps.findAndCountAll({
+                where: { isActive: isActive },
+                offset: offset,
+                limit: limit,
+                order: [['createdAt', 'DESC']],
+            });
+            return res.json({
+                apps: rows,
+                total: count,
+                totalPages: Math.ceil(count / limit),
+                currentPage: page
+            });
+        }
+
+        res.status(400).send('Invalid limit');
+    } catch (error) {
+        error.status = 400;
+        return next(error);
+    }
+};
+
 // get app by id
 // GET /api/apps
 export const getAppById = async (req, res, next) => {

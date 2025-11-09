@@ -36,15 +36,32 @@ export const login = async (req, res, next) => {
             ]
         });
         if (!user) {
-            const error = new Error('user not found change this to Invalid Credentials');
-            error.status = 401;
+            try{
+                const user = await User.findOne({ 
+                    where: {
+                        email: email,
+                        isActive: true
+                    },
+                    attributes: ['email']                    
+                });
+                if (user) {
+                    const error = new Error('User has been created but not assigned to any app, please contact administator.');
+                    error.status = 400;
+                    return next(error);
+                }
+            }catch(error){
+                error.status = 400;
+                return next(error);
+            }
+            const error = new Error('Invalid Credentials');
+            error.status = 400;
             return next(error);
         }
 
         // Validate password, check password if matched when unhashed
         const isValidPassword = await user.validatePassword(password);
         if (!isValidPassword) {
-            const error = new Error('Invalid Password, change this error message');
+            const error = new Error('Invalid Credentials');
             error.status = 401;
             return next(error);
         }
@@ -77,39 +94,8 @@ export const superLogin = async (req, res, next) => {
                 isActive: true
             },
             attributes: ['id', 'email', 'password', 'role', 'mobileNo', 'firstName', 'lastName', 'avatar'],
-            include: [  
-                {
-                    model: Apps,
-                    where: {
-                        isActive: true
-                    },
-                    attributes: ['name'],
-                    through:{
-                        model:Roles,
-                        attributes: ['userType']
-                    }
-                }
-            ]
-            
         });
         if (!user) {
-            try{
-                const user = await User.findOne({ 
-                    where: {
-                        email: email,
-                        isActive: true
-                    },
-                    attributes: ['email']                    
-                });
-                if (user) {
-                    const error = new Error('User has been created but not assigned to any app, please contact administator.');
-                    error.status = 400;
-                    return next(error);
-                }
-            }catch(error){
-                error.status = 400;
-                return next(error);
-            }
             const error = new Error('Invalid Credentials');
             error.status = 400;
             return next(error);
@@ -133,12 +119,11 @@ export const superLogin = async (req, res, next) => {
         // Validate password, check password if matched when unhashed
         const isValidPassword = await user.validatePassword(password);
         if (!isValidPassword) {
-            const error = new Error('Wrong password //change this later');
+            const error = new Error('Invalid Credentials');
             error.status = 400;
             return next(error);
         }
 
-     
         const { accessToken, refreshToken } = await generateTokens(user.id, user.role, 0);
         
         // Remove password from response
@@ -169,6 +154,7 @@ export const superLogin = async (req, res, next) => {
             token: {accessToken, refreshToken}
         });
     } catch (error) {
+        console.log(error);
         error.status = 400;
         return next(error);
     }

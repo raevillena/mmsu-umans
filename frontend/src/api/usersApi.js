@@ -4,7 +4,7 @@ import axiosInstance from './axiosInstance';
 const usersApi = {
     createUser: (newUser) => axiosInstance.post("/auth/register", newUser),
     getUsers: () => axiosInstance.get("/users/"),
-    getUsersPaginated: (page = 1, limit = 10) => axiosInstance.get("/users/paginated", { params: { page, limit } }),
+    getUsersPaginated: (page = 1, limit = 10, isActive = true) => axiosInstance.get("/users/paginated", { params: { page, limit, isActive } }),
     getUserbyEmail: (email) => axiosInstance.get("/users/",email),
     updateUser: (id, data) => axiosInstance.put(`/users/${id}`, data),
     changePassword: (id, data) => axiosInstance.put(`/users/passwd-change/${id}`, data),

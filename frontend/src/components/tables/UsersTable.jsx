@@ -1,33 +1,47 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Pagination, Box
 } from "@mui/material";
 import UserRow from "./UserRow";
-import usersApi from "../../api/usersApi";
+import { getUsersPaginated } from "../../store/slices/usersSlice";
 
-const UsersTable = ({ loadingRowId }) => {
-  const [users, setUsers] = useState([]);
+const UsersTable = ({ loadingRowId, isActive = true }) => {
+  const dispatch = useDispatch();
+  const { 
+    paginatedPagesActive, 
+    paginatedPagesInactive, 
+    totalPagesActive, 
+    totalPagesInactive, 
+    loadedPagesActive, 
+    loadedPagesInactive, 
+    loading 
+  } = useSelector((state) => state.users);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
 
-  const fetchUsers = async (pageNum) => {
-    setLoading(true);
-    try {
-      const response = await usersApi.getUsersPaginated(pageNum);
-      setUsers(response.users);
-      setTotalPages(response.totalPages);
-      setPage(pageNum);
-    } catch (err) {
-      console.error("Failed to fetch users:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Get current page data from cache based on active status
+  const pageNum = Number(page);
+  const paginatedPages = isActive ? paginatedPagesActive : paginatedPagesInactive;
+  const totalPages = isActive ? totalPagesActive : totalPagesInactive;
+  const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
+  const currentPageUsers = paginatedPages[pageNum] || [];
 
+  // Reset page when isActive changes
   useEffect(() => {
-    fetchUsers(1);
-  }, []);
+    setPage(1);
+  }, [isActive]);
+
+  // Fetch page if not cached
+  useEffect(() => {
+    const pageNum = Number(page);
+    if (!loadedPages.includes(pageNum) && !loading) {
+      dispatch(getUsersPaginated({ page: pageNum, isActive }));
+    }
+  }, [page, loadedPages, loading, dispatch, isActive]);
+
+  const handlePageChange = (_, value) => {
+    setPage(value);
+  };
 
   return (
     <Box sx={{ mt: 1 }}>
@@ -48,7 +62,7 @@ const UsersTable = ({ loadingRowId }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map(user => (
+            {currentPageUsers.map(user => (
               <UserRow key={user.id} user={user} loadingRowId={loadingRowId} />
             ))}
           </TableBody>
@@ -57,10 +71,11 @@ const UsersTable = ({ loadingRowId }) => {
 
       <Box sx={{ mt: 2, mb: 2, display: "flex", justifyContent: "center" }}>
         <Pagination
-          count={totalPages}
+          count={totalPages || 1}
           page={page}
-          onChange={(_, value) => fetchUsers(value)}
+          onChange={handlePageChange}
           color="primary"
+          disabled={loading}
         />
       </Box>
     </Box>

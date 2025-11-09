@@ -3,7 +3,6 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Link from '@mui/material/Link';
 import Navigator from '../components/headers/Navigator';
 //import Header from '../components/headers/Header';
 import Header from '../components/headers/Header';
@@ -14,10 +13,8 @@ function Copyright() {
   return (
     <Typography variant="body2" align="center" sx={{ color: 'text.secondary' }}>
       {'Copyright © '}
-      <Link color="inherit" href="https://mui.com/">
-        Your Website
-      </Link>{' '}
-      {new Date().getFullYear()}.
+      {new Date().getFullYear()}{' '}
+      Raymart O. Villena. All rights reserved.
     </Typography>
   );
 }

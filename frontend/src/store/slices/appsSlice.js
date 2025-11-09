@@ -2,12 +2,30 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import appsApi from "../../api/appsApi";
 import { showSnackbar } from "./snackbarSlice"; // Import the snackbar action
 
-// Async action to handle getting apps
+// Async action to handle getting apps (all apps - for backward compatibility)
 export const getApps = createAsyncThunk("apps/getApps", async (_, {dispatch, rejectWithValue }) => {
   try {
       const response = await appsApi.getApps();
       dispatch(showSnackbar({ message: "Apps loaded successfully!", severity: "info" }));
       return response.data; // Expecting { accessToken, user }
+  } catch (error) {
+      if(error.response.data.errors){
+          const eachError = error.response.data.errors.map(err => err.msg).join(", ") || "Getting apps failed"
+          dispatch(showSnackbar({ message: eachError, severity: "error" }));
+          return rejectWithValue(eachError );
+      }
+      const message = error.response?.data?.msg || "Getting apps failed"
+      dispatch(showSnackbar({ message: message, severity: "error" }));
+      return rejectWithValue(message);
+  }
+});
+
+// Async action to handle getting paginated apps (with caching)
+// Accepts { page, isActive } as argument
+export const getAppsPaginated = createAsyncThunk("apps/getAppsPaginated", async ({ page, isActive = true }, {dispatch, rejectWithValue }) => {
+  try {
+      const response = await appsApi.getAppsPaginated(page, 10, isActive);
+      return { page, isActive, data: response.data }; // Expecting { apps: [...], totalPages: number }
   } catch (error) {
       if(error.response.data.errors){
           const eachError = error.response.data.errors.map(err => err.msg).join(", ") || "Getting apps failed"
@@ -57,7 +75,14 @@ export const updateApp = createAsyncThunk("apps/updateApp", async ({id, data}, {
 });
 
 const initialState = {
-  apps:  ['empty'],
+  apps:  ['empty'], // For backward compatibility
+  // Paginated cache - separate for active and inactive
+  paginatedPagesActive: {}, // { 1: [...], 2: [...] }
+  paginatedPagesInactive: {}, // { 1: [...], 2: [...] }
+  totalPagesActive: 0,
+  totalPagesInactive: 0,
+  loadedPagesActive: [], // Track which pages are cached [1, 2, 3, ...]
+  loadedPagesInactive: [], // Track which pages are cached [1, 2, 3, ...]
   loading: false,
   loadingRowId: null,
   error: null,
@@ -67,7 +92,16 @@ const initialState = {
 const appsSlice = createSlice({
   name: "apps",
   initialState,
-  reducers: {},
+  reducers: {
+    clearPaginatedCache: (state) => {
+      state.paginatedPagesActive = {};
+      state.paginatedPagesInactive = {};
+      state.loadedPagesActive = [];
+      state.loadedPagesInactive = [];
+      state.totalPagesActive = 0;
+      state.totalPagesInactive = 0;
+    },
+  },
   extraReducers: (builder) => {
       builder
           .addCase(getApps.pending, (state) => {
@@ -84,6 +118,34 @@ const appsSlice = createSlice({
             state.loading = false;
             state.error = action.payload;
           })
+          .addCase(getAppsPaginated.pending, (state) => {
+            state.loading = true;
+            state.error = null;
+          })
+          .addCase(getAppsPaginated.fulfilled, (state, action) => {
+            const { page, isActive, data } = action.payload;
+            // Ensure page is a number for consistent key access
+            const pageNum = Number(page);
+            // Cache the page data based on active status
+            if (isActive) {
+              state.paginatedPagesActive[pageNum] = data.apps || [];
+              if (!state.loadedPagesActive.includes(pageNum)) {
+                state.loadedPagesActive.push(pageNum);
+              }
+              state.totalPagesActive = data.totalPages || 0;
+            } else {
+              state.paginatedPagesInactive[pageNum] = data.apps || [];
+              if (!state.loadedPagesInactive.includes(pageNum)) {
+                state.loadedPagesInactive.push(pageNum);
+              }
+              state.totalPagesInactive = data.totalPages || 0;
+            }
+            state.loading = false;
+          })
+          .addCase(getAppsPaginated.rejected, (state, action) => {
+            state.loading = false;
+            state.error = action.payload;
+          })
           .addCase(createApp.pending, (state) => {
             state.loading = true;
             state.error = null;
@@ -91,7 +153,13 @@ const appsSlice = createSlice({
           })
           .addCase(createApp.fulfilled, (state, action) => {
             state.loading = false;
-            state.apps.push(action.payload);
+            // Update apps array for reference data
+            if (state.apps[0] !== 'empty') {
+              state.apps.push(action.payload);
+            }
+            // Invalidate active paginated cache - will refetch on next view
+            state.paginatedPagesActive = {};
+            state.loadedPagesActive = [];
           })
           .addCase(createApp.rejected, (state, action) => {
             state.loading = false;
@@ -103,9 +171,28 @@ const appsSlice = createSlice({
           })
           .addCase(updateApp.fulfilled, (state, action) => {
             state.loadingRowId = null;
-            state.apps = state.apps.map((app) =>
-              app.id === action.payload.id ? action.payload : app
-            );
+            // Update apps array for reference data
+            if (state.apps[0] !== 'empty') {
+              state.apps = state.apps.map((app) =>
+                app.id === action.payload.id ? action.payload : app
+              );
+            }
+            // Update active paginated cache if app exists in any cached page
+            Object.keys(state.paginatedPagesActive).forEach(page => {
+              const pageApps = state.paginatedPagesActive[page];
+              const appIndex = pageApps.findIndex(a => a.id === action.payload.id);
+              if (appIndex !== -1) {
+                state.paginatedPagesActive[page][appIndex] = action.payload;
+              }
+            });
+            // Update inactive paginated cache if app exists in any cached page
+            Object.keys(state.paginatedPagesInactive).forEach(page => {
+              const pageApps = state.paginatedPagesInactive[page];
+              const appIndex = pageApps.findIndex(a => a.id === action.payload.id);
+              if (appIndex !== -1) {
+                state.paginatedPagesInactive[page][appIndex] = action.payload;
+              }
+            });
           })
           .addCase(updateApp.rejected, (state, action) => {
             state.loadingRowId = null;
@@ -115,4 +202,5 @@ const appsSlice = createSlice({
   },
 });
 
+export const { clearPaginatedCache } = appsSlice.actions;
 export default appsSlice.reducer;

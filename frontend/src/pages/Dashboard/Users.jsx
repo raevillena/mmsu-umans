@@ -4,13 +4,15 @@ import { useDispatch, useSelector } from "react-redux";
 //MUI components
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Box from '@mui/material/Box';
 import SearchIcon from '@mui/icons-material/Search';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
@@ -19,7 +21,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import UsersTable from "../../components/tables/UsersTable";
 
 //functions to dispatch actions
-import { getUsers, createUser } from '../../store/slices/usersSlice';
+import { getUsersPaginated, createUser, clearPaginatedCache } from '../../store/slices/usersSlice';
 
 //Custom loading screen
 import LoadingScreen from "../../components/LoadingScreen";
@@ -29,30 +31,31 @@ import AddUserDialog from "../../components/dialogs/AddUserDialog";
 
 
 export default function Users() {
-  const {users, loading, loadingRowId } = useSelector((state) => state.users);
+  const { loading, loadingRowId, loadedPagesActive, loadedPagesInactive } = useSelector((state) => state.users);
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
+  const [tabValue, setTabValue] = useState(0); // 0 = Active, 1 = Inactive
+  const isActive = tabValue === 0;
 
+  // Load first page on mount if not cached
   useEffect(() => {
-    if (users[0] === 'empty') {
-      dispatch(getUsers());
+    const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
+    if (!loadedPages.includes(1)) {
+      dispatch(getUsersPaginated({ page: 1, isActive }));
     }
-  }
-  ,[users]);
+  }, [loadedPagesActive, loadedPagesInactive, isActive, dispatch]);
 
-  // Filter users based on firstName, lastName, or email
-  const filteredUsers = users.filter((user) =>
-    `${user.firstName} ${user.lastName} ${user.email} ${user.role} ${user.office} ${user.mobileNo} `
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  );
-
-  //reload users
+  //reload users - clear cache and reload first page
   const handleReload = () => {
-    dispatch(getUsers());
+    dispatch(clearPaginatedCache());
+    dispatch(getUsersPaginated({ page: 1, isActive }));
     setSearchTerm("");  // Clear the search term
   }
+
+  const handleTabChange = (_, newValue) => {
+    setTabValue(newValue);
+  };
 
   //add user dialog open close functions
   const handleOpen = () => {
@@ -70,9 +73,11 @@ export default function Users() {
   };
 
 
+  const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
+
   return (
     <div>
-      {loading || users[0] === 'empty'? <LoadingScreen caption='Loading...' fullScreen={false} /> : (
+      {loading && !loadedPages.includes(1) ? <LoadingScreen caption='Loading...' fullScreen={false} /> : (
         <Paper sx={{ maxWidth: '95%', margin: 'auto', overflow: 'hidden' ,height: '100%'}}>
           <AppBar
             position="static"
@@ -81,7 +86,6 @@ export default function Users() {
             sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}
           >
             <Toolbar>
-              {/* {error && showSnackbar(error,"error")} */}
               <Grid container spacing={2} sx={{ alignItems: 'center' }}>
                 <Grid item>
                   <SearchIcon color="inherit" sx={{ display: 'block' }} />
@@ -92,6 +96,7 @@ export default function Users() {
                     placeholder="Search by name, email address, phone number, or user role."
                     onChange={(e) => setSearchTerm(e.target.value)}
                     variant="standard"
+                    disabled
                   />
                 </Grid>
                 <Grid item>
@@ -108,7 +113,13 @@ export default function Users() {
               </Grid>
             </Toolbar>
           </AppBar>
-          <UsersTable loadingRowId={loadingRowId} />
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={tabValue} onChange={handleTabChange} aria-label="users tabs">
+              <Tab label="Active" />
+              <Tab label="Inactive" />
+            </Tabs>
+          </Box>
+          <UsersTable loadingRowId={loadingRowId} isActive={isActive} />
         </Paper>
       )}
     </div>
