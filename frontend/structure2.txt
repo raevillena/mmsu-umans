@@ -1,0 +1,97 @@
+#1️ Frontend Framework & Libraries
+    - React 19 – Latest core frontend library.
+    - Vite – Modern, fast build tool and dev server (instead of CRA).
+    - Material UI (v6.4.3) – For UI components and theming.
+    - Emotion (v11.14) – CSS-in-JS styling used by MUI.
+    - React Router v7 – Navigation and route handling.
+    - Redux Toolkit v2.5 – Global state management.
+    - React Redux v9.2 – Redux bindings for React.
+    - Axios – For API requests.
+    - React Hook Form – Lightweight form handling.
+    - Yup & Zod – Schema validation libraries for forms and API responses.
+    - Chart.js & react-chartjs-2 – For visualizing data via charts.
+    - React Syntax Highlighter – Code display/highlighting.
+
+#2️ Authentication & Security
+    - Session-based Auth with Redis – Server maintains sessions instead of stateless JWT.
+    - Google OAuth2 Support – via @react-oauth/google for Google sign-in integration.
+    - Refresh Token Handling – Done in the frontend (renew on expiry).
+    - RBAC – Role-Based Access Control (admin/user-level access).
+    - CSRF Protection & Secure Cookies – Handled through backend with cookie settings.
+
+#3️ API Communication
+    - Custom Axios Wrapper – For consistent API handling.
+    - Global Error Interceptors – API errors mapped to user-friendly messages.
+    - Loading States & Toast Notifications – Enhanced UX on network activity and errors.
+
+#4️ Form Handling & Validation
+    - React Hook Form – Optimized performance form state management.
+    - Yup – Declarative schema validation.
+    - Zod – TypeScript-friendly schema validation (optional alternative or for API responses).
+
+#5️ Project Structure Overview
+
+/src
+  /config       → Configuration files (e.g., axios instance, mqtt config) 
+  /api          → Axios instance, authApi, userApi
+  /components   → Reusable components (Navbar, Sidebar, etc.)
+  /hooks        → Custom React hooks (e.g., useAuth, useFetch)
+  /layouts      → Admin and user layouts
+  /pages        → Auth, Dashboard, 404, etc.
+  /store        → Redux Toolkit slices and store
+  /utils        → Helpers like formatDate, validation logic
+  /styles       → MUI Theme configuration
+  App.jsx       → Main app component
+  main.jsx      → Entry point
+  routes.jsx    → Route definitions
+  index.css     → Global styles
+
+#6️ Tooling & Developer Experience
+    - ESLint + Plugins – Code linting with React and hooks support.
+    - TypeScript Support via @types/ – For typed development (optional if .ts not used yet).
+    - vite-plugin-svgr – SVG imports as React components.
+    - rollup-plugin-visualizer – Bundle analyzer for performance insights.
+    - Environment Variables – .env for base API URLs, secrets, etc.
+
+#7 Sample Project Structure
+```
+├── src/
+│   ├── api/                  # API calls & Axios wrapper
+│   │   ├── authApi.js        # Authentication API (login, logout, refresh token)
+│   │   ├── userApi.js        # User-related API calls
+│   │   ├── axiosInstance.js  # Pre-configured Axios instance
+│   ├── components/           # Reusable UI components
+│   │   ├── Navbar.jsx        # Navigation bar
+│   │   ├── Sidebar.jsx       # Sidebar component
+│   │   ├── ProtectedRoute.jsx # Route protection (RBAC)
+│   ├── hooks/                # Custom hooks
+│   │   ├── useAuth.js        # Hook for authentication state
+│   │   ├── useFetch.js       # Hook for API fetching with caching
+│   ├── layouts/              # Layout components
+│   │   ├── AdminLayout.jsx    # Layout for admin pages
+│   │   ├── UserLayout.jsx     # Layout for user pages
+│   ├── pages/                # Main application pages
+│   │   ├── Auth/
+│   │   │   ├── Login.jsx      # Login page
+│   │   │   ├── Register.jsx   # Registration page
+│   │   ├── Dashboard/
+│   │   │   ├── AdminDashboard.jsx  # Admin dashboard
+│   │   │   ├── UserDashboard.jsx   # User dashboard
+│   │   ├── NotFound.jsx       # 404 Page
+│   ├── store/                # Redux state management
+│   │   ├── slices/
+│   │   │   ├── authSlice.js  # Authentication state
+│   │   │   ├── userSlice.js  # User state
+│   │   ├── store.js          # Redux store setup
+│   ├── utils/                # Helper functions
+│   │   ├── formatDate.js     # Utility to format dates
+│   │   ├── validation.js     # Form validation helpers
+│   ├── styles/               # Global styles and themes
+│   │   ├── theme.js          # MUI theme configuration
+│   ├── App.jsx               # Main React component
+│   ├── main.jsx              # React entry point
+│   ├── routes.jsx            # Centralized route definitions
+│   ├── index.css             # Global styles
+│
+├── .env                      # Environment variables (API URL, secrets)
+├── package.json              # Dependencies & scripts
