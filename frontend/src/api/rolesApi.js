@@ -4,7 +4,15 @@ import axiosInstance from './axiosInstance';
 const rolesApi = {
     addRole: (newRole) => axiosInstance.post("/roles", newRole),
     getRoles: () => axiosInstance.get("/roles"),
-    getRolesPaginated: (page = 1, limit = 10, isActive = true) => axiosInstance.get("/roles/paginated", { params: { page, limit, isActive } }),
+    getRolesPaginated: (page = 1, limit = 10, isActive = true, search = "") =>
+      axiosInstance.get("/roles/paginated", {
+        params: {
+          page,
+          limit,
+          isActive,
+          search: search ? search : undefined,
+        },
+      }),
     updateRole: (id, data) => axiosInstance.put(`/roles/${id}`, data),
     deleteApp: (id) => axiosInstance.delete(`/roles/${id}`),
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Pagination, Box
@@ -6,38 +6,45 @@ import {
 import AppRow from "./AppRow";
 import { getAppsPaginated } from "../../store/slices/appsSlice";
 
-const AppsTable = ({ loadingRowId, isActive = true }) => {
+const AppsTable = ({ loadingRowId, isActive = true, searchTerm = "" }) => {
   const dispatch = useDispatch();
   const { 
-    paginatedPagesActive, 
-    paginatedPagesInactive, 
-    totalPagesActive, 
-    totalPagesInactive, 
-    loadedPagesActive, 
-    loadedPagesInactive, 
+    paginatedActive, 
+    paginatedInactive, 
     loading 
   } = useSelector((state) => state.apps);
   const [page, setPage] = useState(1);
 
+  const trimmedSearch = useMemo(() => searchTerm.trim(), [searchTerm]);
+  const searchKey = useMemo(
+    () => trimmedSearch.toLowerCase(),
+    [trimmedSearch]
+  );
+
   // Get current page data from cache based on active status
   const pageNum = Number(page);
-  const paginatedPages = isActive ? paginatedPagesActive : paginatedPagesInactive;
-  const totalPages = isActive ? totalPagesActive : totalPagesInactive;
-  const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
-  const currentPageApps = paginatedPages[pageNum] || [];
+  const cacheMap = isActive ? paginatedActive : paginatedInactive;
+  const cacheBucket = cacheMap[searchKey];
+  const emptyPagesRef = useRef({});
+  const emptyLoadedRef = useRef([]);
+
+  const pages = cacheBucket?.pages ?? emptyPagesRef.current;
+  const loadedPages = cacheBucket?.loadedPages ?? emptyLoadedRef.current;
+  const totalPages = cacheBucket?.totalPages ?? 0;
+  const currentPageApps = pages[pageNum] || [];
 
   // Reset page when isActive changes
   useEffect(() => {
     setPage(1);
-  }, [isActive]);
+  }, [isActive, searchKey]);
 
   // Fetch page if not cached
   useEffect(() => {
     const pageNum = Number(page);
     if (!loadedPages.includes(pageNum) && !loading) {
-      dispatch(getAppsPaginated({ page: pageNum, isActive }));
+      dispatch(getAppsPaginated({ page: pageNum, isActive, searchTerm: trimmedSearch }));
     }
-  }, [page, loadedPages, loading, dispatch, isActive]);
+  }, [page, loadedPages, loading, dispatch, isActive, searchKey, trimmedSearch]);
 
   const handlePageChange = (_, value) => {
     setPage(value);

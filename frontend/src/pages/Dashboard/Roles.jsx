@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 //MUI components
@@ -31,20 +31,23 @@ import AddRoleDialog from "../../components/dialogs/AddRoleDialog";
 
 
 export default function Roles({ isActive = true }) {
-  const { loading, loadingRowId, loadedPagesActive, loadedPagesInactive } = useSelector((state) => state.roles);
+  const { loading, loadingRowId, paginatedActive, paginatedInactive } = useSelector((state) => state.roles);
   const users = useSelector((state) => state.users.users);
   const apps = useSelector((state) => state.apps.apps);
   const userTypes = useSelector((state) => state.userTypes.userTypes);
 
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef(null);
 
-  // Load first page on mount if not cached
+  const normalizedSearch = useMemo(
+    () => searchTerm.trim().toLowerCase(),
+    [searchTerm]
+  );
+
   useEffect(() => {
-    const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
-    if (!loadedPages.includes(1)) {
-      dispatch(getRolesPaginated({ page: 1, isActive }));
-    }
     if (users[0] === 'empty') {
       dispatch(getUsers());
     }
@@ -54,12 +57,15 @@ export default function Roles({ isActive = true }) {
     if (userTypes[0] === 'empty') {
       dispatch(getUserTypes());
     }
-  }, [loadedPagesActive, loadedPagesInactive, isActive, users, apps, userTypes, dispatch]);
+  }, [users, apps, userTypes, dispatch]);
 
   //reload roles - clear cache and reload first page
   const handleReload = () => {
     dispatch(clearPaginatedCache());
-    dispatch(getRolesPaginated({ page: 1, isActive }));
+    setSearchInput("");
+    setSearchTerm("");
+    dispatch(getRolesPaginated({ page: 1, isActive, searchTerm: "" }));
+    searchInputRef.current?.focus();
   }
 
   //add user dialog open close functions
@@ -78,11 +84,14 @@ export default function Roles({ isActive = true }) {
     handleClose(); // Close the dialog
   };
 
-  const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
+  const cacheMap = isActive ? paginatedActive : paginatedInactive;
+  const cacheBucket = cacheMap[normalizedSearch];
+  const isFirstPageLoaded = cacheBucket?.loadedPages?.includes(1);
+  const showInitialLoader = loading && !isFirstPageLoaded;
 
   return (
     <div>
-      {loading && !loadedPages.includes(1) ? <LoadingScreen caption='Loading...' fullScreen={false} /> : (
+      {showInitialLoader ? <LoadingScreen caption='Loading...' fullScreen={false} /> : (
         <Paper sx={{ maxWidth: '95%', margin: 'auto', overflow: 'hidden' ,height: '100%'}}>
           <AppBar
             position="static"
@@ -100,7 +109,16 @@ export default function Roles({ isActive = true }) {
                     fullWidth
                     placeholder="Search by name, email address, phone number, or user role."
                     variant="standard"
-                    disabled
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        setSearchTerm(searchInput);
+                        searchInputRef.current?.focus();
+                      }
+                    }}
+                    value={searchInput}
+                    inputRef={searchInputRef}
                   />
                 </Grid>
                 <Grid item>
@@ -119,7 +137,7 @@ export default function Roles({ isActive = true }) {
               </Grid>
             </Toolbar>
           </AppBar>
-          <RolesTable users={users} apps={apps} userTypes={userTypes} loadingRowId={loadingRowId} isActive={isActive} />
+          <RolesTable users={users} apps={apps} userTypes={userTypes} loadingRowId={loadingRowId} isActive={isActive} searchTerm={searchTerm} />
         </Paper>
       )}
     </div>

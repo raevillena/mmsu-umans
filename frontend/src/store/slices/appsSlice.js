@@ -22,10 +22,15 @@ export const getApps = createAsyncThunk("apps/getApps", async (_, {dispatch, rej
 
 // Async action to handle getting paginated apps (with caching)
 // Accepts { page, isActive } as argument
-export const getAppsPaginated = createAsyncThunk("apps/getAppsPaginated", async ({ page, isActive = true }, {dispatch, rejectWithValue }) => {
+export const getAppsPaginated = createAsyncThunk("apps/getAppsPaginated", async ({ page, isActive = true, searchTerm = "" }, {dispatch, rejectWithValue }) => {
   try {
-      const response = await appsApi.getAppsPaginated(page, 10, isActive);
-      return { page, isActive, data: response.data }; // Expecting { apps: [...], totalPages: number }
+      const response = await appsApi.getAppsPaginated(page, 10, isActive, searchTerm);
+      // Show success message only on first page load to avoid notification spam
+      if (page === 1) {
+        const searchMsg = searchTerm ? ` with search "${searchTerm}"` : '';
+        dispatch(showSnackbar({ message: `Apps loaded successfully${searchMsg}!`, severity: "info" }));
+      }
+      return { page, isActive, searchTerm, data: response.data }; // Expecting { apps: [...], totalPages: number }
   } catch (error) {
       if(error.response.data.errors){
           const eachError = error.response.data.errors.map(err => err.msg).join(", ") || "Getting apps failed"
@@ -76,13 +81,9 @@ export const updateApp = createAsyncThunk("apps/updateApp", async ({id, data}, {
 
 const initialState = {
   apps:  ['empty'], // For backward compatibility
-  // Paginated cache - separate for active and inactive
-  paginatedPagesActive: {}, // { 1: [...], 2: [...] }
-  paginatedPagesInactive: {}, // { 1: [...], 2: [...] }
-  totalPagesActive: 0,
-  totalPagesInactive: 0,
-  loadedPagesActive: [], // Track which pages are cached [1, 2, 3, ...]
-  loadedPagesInactive: [], // Track which pages are cached [1, 2, 3, ...]
+  // Paginated cache keyed by search term for active/inactive
+  paginatedActive: {}, // { searchKey: { pages: {}, loadedPages: [], totalPages: number } }
+  paginatedInactive: {},
   loading: false,
   loadingRowId: null,
   error: null,
@@ -94,12 +95,8 @@ const appsSlice = createSlice({
   initialState,
   reducers: {
     clearPaginatedCache: (state) => {
-      state.paginatedPagesActive = {};
-      state.paginatedPagesInactive = {};
-      state.loadedPagesActive = [];
-      state.loadedPagesInactive = [];
-      state.totalPagesActive = 0;
-      state.totalPagesInactive = 0;
+      state.paginatedActive = {};
+      state.paginatedInactive = {};
     },
   },
   extraReducers: (builder) => {
@@ -123,23 +120,25 @@ const appsSlice = createSlice({
             state.error = null;
           })
           .addCase(getAppsPaginated.fulfilled, (state, action) => {
-            const { page, isActive, data } = action.payload;
-            // Ensure page is a number for consistent key access
+            const { page, isActive, searchTerm = "", data } = action.payload;
             const pageNum = Number(page);
-            // Cache the page data based on active status
-            if (isActive) {
-              state.paginatedPagesActive[pageNum] = data.apps || [];
-              if (!state.loadedPagesActive.includes(pageNum)) {
-                state.loadedPagesActive.push(pageNum);
-              }
-              state.totalPagesActive = data.totalPages || 0;
-            } else {
-              state.paginatedPagesInactive[pageNum] = data.apps || [];
-              if (!state.loadedPagesInactive.includes(pageNum)) {
-                state.loadedPagesInactive.push(pageNum);
-              }
-              state.totalPagesInactive = data.totalPages || 0;
+            const searchKey = searchTerm.trim().toLowerCase();
+            const targetCache = isActive ? state.paginatedActive : state.paginatedInactive;
+
+            if (!targetCache[searchKey]) {
+              targetCache[searchKey] = {
+                pages: {},
+                loadedPages: [],
+                totalPages: 0,
+              };
             }
+
+            const bucket = targetCache[searchKey];
+            bucket.pages[pageNum] = data.apps || [];
+            if (!bucket.loadedPages.includes(pageNum)) {
+              bucket.loadedPages.push(pageNum);
+            }
+            bucket.totalPages = data.totalPages || 0;
             state.loading = false;
           })
           .addCase(getAppsPaginated.rejected, (state, action) => {
@@ -157,9 +156,9 @@ const appsSlice = createSlice({
             if (state.apps[0] !== 'empty') {
               state.apps.push(action.payload);
             }
-            // Invalidate active paginated cache - will refetch on next view
-            state.paginatedPagesActive = {};
-            state.loadedPagesActive = [];
+            // Invalidate caches - will refetch on next view
+            state.paginatedActive = {};
+            state.paginatedInactive = {};
           })
           .addCase(createApp.rejected, (state, action) => {
             state.loading = false;
@@ -185,47 +184,42 @@ const appsSlice = createSlice({
             let wasInActive = false;
             let wasInInactive = false;
             
-            // Check active cache
-            Object.keys(state.paginatedPagesActive).forEach(page => {
-              const pageApps = state.paginatedPagesActive[page];
-              const appIndex = pageApps.findIndex(a => a.id === updatedApp.id);
-              if (appIndex !== -1) {
-                wasInActive = true;
-                // If new status is inactive, remove from active cache
-                if (!newIsActive) {
-                  state.paginatedPagesActive[page] = pageApps.filter(a => a.id !== updatedApp.id);
-                } else {
-                  // If still active, update the record
-                  state.paginatedPagesActive[page][appIndex] = updatedApp;
-                }
+            const iterateCache = (cacheMap, callback) => {
+              Object.values(cacheMap).forEach(bucket => {
+                Object.entries(bucket.pages).forEach(([pageKey, pageApps]) => {
+                  const index = pageApps.findIndex(a => a.id === updatedApp.id);
+                  if (index !== -1) {
+                    callback(bucket, pageKey, pageApps, index);
+                  }
+                });
+              });
+            };
+            
+            iterateCache(state.paginatedActive, (bucket, pageKey, pageApps, index) => {
+              wasInActive = true;
+              if (!newIsActive) {
+                bucket.pages[pageKey] = pageApps.filter(a => a.id !== updatedApp.id);
+              } else {
+                bucket.pages[pageKey][index] = updatedApp;
               }
             });
             
-            // Check inactive cache
-            Object.keys(state.paginatedPagesInactive).forEach(page => {
-              const pageApps = state.paginatedPagesInactive[page];
-              const appIndex = pageApps.findIndex(a => a.id === updatedApp.id);
-              if (appIndex !== -1) {
-                wasInInactive = true;
-                // If new status is active, remove from inactive cache
-                if (newIsActive) {
-                  state.paginatedPagesInactive[page] = pageApps.filter(a => a.id !== updatedApp.id);
-                } else {
-                  // If still inactive, update the record
-                  state.paginatedPagesInactive[page][appIndex] = updatedApp;
-                }
+            iterateCache(state.paginatedInactive, (bucket, pageKey, pageApps, index) => {
+              wasInInactive = true;
+              if (newIsActive) {
+                bucket.pages[pageKey] = pageApps.filter(a => a.id !== updatedApp.id);
+              } else {
+                bucket.pages[pageKey][index] = updatedApp;
               }
             });
             
             // If status changed, invalidate the target cache to trigger refetch
             if (wasInActive && !newIsActive) {
               // Moved from active to inactive - invalidate active cache
-              state.paginatedPagesActive = {};
-              state.loadedPagesActive = [];
+              state.paginatedActive = {};
             } else if (wasInInactive && newIsActive) {
               // Moved from inactive to active - invalidate inactive cache
-              state.paginatedPagesInactive = {};
-              state.loadedPagesInactive = [];
+              state.paginatedInactive = {};
             }
           })
           .addCase(updateApp.rejected, (state, action) => {

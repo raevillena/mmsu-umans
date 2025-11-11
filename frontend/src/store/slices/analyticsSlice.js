@@ -8,7 +8,11 @@ export const fetchOverview = createAsyncThunk(
   async (_, { dispatch, rejectWithValue }) => {
     try {
       const response = await analyticsApi.getOverview();
-      return response.data;
+      const { data, msg } = response.data;
+      if (msg) {
+        dispatch(showSnackbar({ message: msg, severity: "success" }));
+      }
+      return data;
     } catch (error) {
       const message = error.response?.data?.msg || "Failed to fetch overview statistics";
       dispatch(showSnackbar({ message, severity: "error" }));
@@ -22,9 +26,14 @@ export const fetchUserGrowth = createAsyncThunk(
   async ({ period = "monthly", limit = 12 }, { dispatch, rejectWithValue }) => {
     try {
       const response = await analyticsApi.getUserGrowth(period, limit);
-      return response.data;
+      const { data, msg } = response.data;
+      if (msg) {
+        dispatch(showSnackbar({ message: msg, severity: "success" }));
+      }
+      return data;
     } catch (error) {
       const message = error.response?.data?.msg || "Failed to fetch user growth data";
+      dispatch(showSnackbar({ message, severity: "error" }));
       return rejectWithValue(message);
     }
   }
@@ -35,9 +44,14 @@ export const fetchAppUsage = createAsyncThunk(
   async (_, { dispatch, rejectWithValue }) => {
     try {
       const response = await analyticsApi.getAppUsage();
-      return response.data;
+      const { data, msg } = response.data;
+      if (msg) {
+        dispatch(showSnackbar({ message: msg, severity: "success" }));
+      }
+      return data;
     } catch (error) {
       const message = error.response?.data?.msg || "Failed to fetch app usage data";
+      dispatch(showSnackbar({ message, severity: "error" }));
       return rejectWithValue(message);
     }
   }
@@ -48,9 +62,14 @@ export const fetchActivityStats = createAsyncThunk(
   async ({ period = "monthly", limit = 12 }, { dispatch, rejectWithValue }) => {
     try {
       const response = await analyticsApi.getActivityStats(period, limit);
-      return response.data;
+      const { data, msg } = response.data;
+      if (msg) {
+        dispatch(showSnackbar({ message: msg, severity: "success" }));
+      }
+      return data;
     } catch (error) {
       const message = error.response?.data?.msg || "Failed to fetch activity statistics";
+      dispatch(showSnackbar({ message, severity: "error" }));
       return rejectWithValue(message);
     }
   }
@@ -61,9 +80,14 @@ export const fetchRoleDistribution = createAsyncThunk(
   async (_, { dispatch, rejectWithValue }) => {
     try {
       const response = await analyticsApi.getRoleDistribution();
-      return response.data;
+      const { data, msg } = response.data;
+      if (msg) {
+        dispatch(showSnackbar({ message: msg, severity: "success" }));
+      }
+      return data;
     } catch (error) {
       const message = error.response?.data?.msg || "Failed to fetch role distribution";
+      dispatch(showSnackbar({ message, severity: "error" }));
       return rejectWithValue(message);
     }
   }
@@ -74,9 +98,14 @@ export const fetchOfficeDistribution = createAsyncThunk(
   async (_, { dispatch, rejectWithValue }) => {
     try {
       const response = await analyticsApi.getOfficeDistribution();
-      return response.data;
+      const { data, msg } = response.data;
+      if (msg) {
+        dispatch(showSnackbar({ message: msg, severity: "success" }));
+      }
+      return data;
     } catch (error) {
       const message = error.response?.data?.msg || "Failed to fetch office distribution";
+      dispatch(showSnackbar({ message, severity: "error" }));
       return rejectWithValue(message);
     }
   }
@@ -87,9 +116,14 @@ export const fetchRecentActivity = createAsyncThunk(
   async (limit = 10, { dispatch, rejectWithValue }) => {
     try {
       const response = await analyticsApi.getRecentActivity(limit);
-      return response.data;
+      const { data, msg } = response.data;
+      if (msg) {
+        dispatch(showSnackbar({ message: msg, severity: "success" }));
+      }
+      return data;
     } catch (error) {
       const message = error.response?.data?.msg || "Failed to fetch recent activity";
+      dispatch(showSnackbar({ message, severity: "error" }));
       return rejectWithValue(message);
     }
   }
@@ -100,9 +134,14 @@ export const fetchTopActions = createAsyncThunk(
   async (limit = 10, { dispatch, rejectWithValue }) => {
     try {
       const response = await analyticsApi.getTopActions(limit);
-      return response.data;
+      const { data, msg } = response.data;
+      if (msg) {
+        dispatch(showSnackbar({ message: msg, severity: "success" }));
+      }
+      return data;
     } catch (error) {
       const message = error.response?.data?.msg || "Failed to fetch top actions";
+      dispatch(showSnackbar({ message, severity: "error" }));
       return rejectWithValue(message);
     }
   }

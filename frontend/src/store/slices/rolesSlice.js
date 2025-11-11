@@ -21,10 +21,10 @@ export const getRoles = createAsyncThunk("roles/getRoles", async (_, {dispatch, 
 });
 
 // Async action to handle getting paginated roles (with caching)
-export const getRolesPaginated = createAsyncThunk("roles/getRolesPaginated", async ({ page, isActive = true }, {dispatch, rejectWithValue }) => {
+export const getRolesPaginated = createAsyncThunk("roles/getRolesPaginated", async ({ page, isActive = true, searchTerm = "" }, {dispatch, rejectWithValue }) => {
   try {
-      const response = await rolesApi.getRolesPaginated(page, 10, isActive);
-      return { page, isActive, data: response.data }; // Expecting { roles: [...], totalPages: number }
+      const response = await rolesApi.getRolesPaginated(page, 10, isActive, searchTerm);
+      return { page, isActive, searchTerm, data: response.data }; // Expecting { roles: [...], totalPages: number }
   } catch (error) {
       if(error.response.data.errors){
           const eachError = error.response.data.errors.map(err => err.msg).join(", ") || "Getting Roles failed"
@@ -76,12 +76,8 @@ export const updateRole = createAsyncThunk("roles/updateRole", async ({id, data}
 const initialState = {
   roles:  ['empty'], // For backward compatibility
   // Paginated cache - separate for active and inactive
-  paginatedPagesActive: {}, // { 1: [...], 2: [...] }
-  paginatedPagesInactive: {}, // { 1: [...], 2: [...] }
-  totalPagesActive: 0,
-  totalPagesInactive: 0,
-  loadedPagesActive: [], // Track which pages are cached [1, 2, 3, ...]
-  loadedPagesInactive: [], // Track which pages are cached [1, 2, 3, ...]
+  paginatedActive: {}, // { searchKey: { pages: {}, loadedPages: [], totalPages: number } }
+  paginatedInactive: {},
   loading: false,
   loadingRowId: null,
   error: null,
@@ -92,12 +88,8 @@ const rolesSlice = createSlice({
   initialState,
   reducers: {
     clearPaginatedCache: (state) => {
-      state.paginatedPagesActive = {};
-      state.paginatedPagesInactive = {};
-      state.loadedPagesActive = [];
-      state.loadedPagesInactive = [];
-      state.totalPagesActive = 0;
-      state.totalPagesInactive = 0;
+      state.paginatedActive = {};
+      state.paginatedInactive = {};
     },
   },
   extraReducers: (builder) => {
@@ -120,23 +112,25 @@ const rolesSlice = createSlice({
             state.error = null;
           })
           .addCase(getRolesPaginated.fulfilled, (state, action) => {
-            const { page, isActive, data } = action.payload;
-            // Ensure page is a number for consistent key access
+            const { page, isActive, searchTerm = "", data } = action.payload;
             const pageNum = Number(page);
-            // Cache the page data based on active status
-            if (isActive) {
-              state.paginatedPagesActive[pageNum] = data.roles || [];
-              if (!state.loadedPagesActive.includes(pageNum)) {
-                state.loadedPagesActive.push(pageNum);
-              }
-              state.totalPagesActive = data.totalPages || 0;
-            } else {
-              state.paginatedPagesInactive[pageNum] = data.roles || [];
-              if (!state.loadedPagesInactive.includes(pageNum)) {
-                state.loadedPagesInactive.push(pageNum);
-              }
-              state.totalPagesInactive = data.totalPages || 0;
+            const searchKey = searchTerm.trim().toLowerCase();
+            const targetCache = isActive ? state.paginatedActive : state.paginatedInactive;
+
+            if (!targetCache[searchKey]) {
+              targetCache[searchKey] = {
+                pages: {},
+                loadedPages: [],
+                totalPages: 0,
+              };
             }
+
+            const bucket = targetCache[searchKey];
+            bucket.pages[pageNum] = data.roles || [];
+            if (!bucket.loadedPages.includes(pageNum)) {
+              bucket.loadedPages.push(pageNum);
+            }
+            bucket.totalPages = data.totalPages || 0;
             state.loading = false;
           })
           .addCase(getRolesPaginated.rejected, (state, action) => {
@@ -154,8 +148,8 @@ const rolesSlice = createSlice({
               state.roles.push(action.payload);
             }
             // Invalidate active paginated cache - will refetch on next view
-            state.paginatedPagesActive = {};
-            state.loadedPagesActive = [];
+            state.paginatedActive = {};
+            state.paginatedInactive = {};
           })
           .addCase(addRole.rejected, (state, action) => {
             state.loading = false;
@@ -182,46 +176,42 @@ const rolesSlice = createSlice({
             let wasInInactive = false;
             
             // Check active cache
-            Object.keys(state.paginatedPagesActive).forEach(page => {
-              const pageRoles = state.paginatedPagesActive[page];
-              const roleIndex = pageRoles.findIndex(r => r.id === updatedRole.id);
-              if (roleIndex !== -1) {
-                wasInActive = true;
-                // If new status is inactive, remove from active cache
-                if (!newIsActive) {
-                  state.paginatedPagesActive[page] = pageRoles.filter(r => r.id !== updatedRole.id);
-                } else {
-                  // If still active, update the record
-                  state.paginatedPagesActive[page][roleIndex] = updatedRole;
-                }
+            const iterateCache = (cacheMap, callback) => {
+              Object.values(cacheMap).forEach(bucket => {
+                Object.entries(bucket.pages).forEach(([pageKey, pageRoles]) => {
+                  const index = pageRoles.findIndex(r => r.id === updatedRole.id);
+                  if (index !== -1) {
+                    callback(bucket, pageKey, pageRoles, index);
+                  }
+                });
+              });
+            };
+            
+            iterateCache(state.paginatedActive, (bucket, pageKey, pageRoles, index) => {
+              wasInActive = true;
+              if (!newIsActive) {
+                bucket.pages[pageKey] = pageRoles.filter(r => r.id !== updatedRole.id);
+              } else {
+                bucket.pages[pageKey][index] = updatedRole;
               }
             });
             
-            // Check inactive cache
-            Object.keys(state.paginatedPagesInactive).forEach(page => {
-              const pageRoles = state.paginatedPagesInactive[page];
-              const roleIndex = pageRoles.findIndex(r => r.id === updatedRole.id);
-              if (roleIndex !== -1) {
-                wasInInactive = true;
-                // If new status is active, remove from inactive cache
-                if (newIsActive) {
-                  state.paginatedPagesInactive[page] = pageRoles.filter(r => r.id !== updatedRole.id);
-                } else {
-                  // If still inactive, update the record
-                  state.paginatedPagesInactive[page][roleIndex] = updatedRole;
-                }
+            iterateCache(state.paginatedInactive, (bucket, pageKey, pageRoles, index) => {
+              wasInInactive = true;
+              if (newIsActive) {
+                bucket.pages[pageKey] = pageRoles.filter(r => r.id !== updatedRole.id);
+              } else {
+                bucket.pages[pageKey][index] = updatedRole;
               }
             });
             
             // If status changed, invalidate the target cache to trigger refetch
             if (wasInActive && !newIsActive) {
               // Moved from active to inactive - invalidate active cache
-              state.paginatedPagesActive = {};
-              state.loadedPagesActive = [];
+              state.paginatedActive = {};
             } else if (wasInInactive && newIsActive) {
               // Moved from inactive to active - invalidate inactive cache
-              state.paginatedPagesInactive = {};
-              state.loadedPagesInactive = [];
+              state.paginatedInactive = {};
             }
           })
           .addCase(updateRole.rejected, (state, action) => {

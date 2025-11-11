@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 //MUI components
@@ -28,24 +28,25 @@ import AddUserDialog from "../../components/dialogs/AddUserDialog";
 
 
 export default function Users({ isActive = true }) {
-  const { loading, loadingRowId, loadedPagesActive, loadedPagesInactive } = useSelector((state) => state.users);
+  const { loading, loadingRowId, paginatedActive, paginatedInactive } = useSelector((state) => state.users);
   const dispatch = useDispatch();
+  const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
+  const searchInputRef = useRef(null);
 
-  // Load first page on mount if not cached
-  useEffect(() => {
-    const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
-    if (!loadedPages.includes(1)) {
-      dispatch(getUsersPaginated({ page: 1, isActive }));
-    }
-  }, [loadedPagesActive, loadedPagesInactive, isActive, dispatch]);
+  const normalizedSearch = useMemo(
+    () => searchTerm.trim().toLowerCase(),
+    [searchTerm]
+  );
 
   //reload users - clear cache and reload first page
   const handleReload = () => {
     dispatch(clearPaginatedCache());
-    dispatch(getUsersPaginated({ page: 1, isActive }));
-    setSearchTerm("");  // Clear the search term
+    setSearchInput("");
+    setSearchTerm("");
+    dispatch(getUsersPaginated({ page: 1, isActive, searchTerm: "" }));
+    searchInputRef.current?.focus();
   }
 
   //add user dialog open close functions
@@ -64,11 +65,14 @@ export default function Users({ isActive = true }) {
   };
 
 
-  const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
+  const cacheMap = isActive ? paginatedActive : paginatedInactive;
+  const cacheBucket = cacheMap[normalizedSearch];
+  const isFirstPageLoaded = cacheBucket?.loadedPages?.includes(1);
+  const showInitialLoader = loading && !isFirstPageLoaded;
 
   return (
     <div>
-      {loading && !loadedPages.includes(1) ? <LoadingScreen caption='Loading...' fullScreen={false} /> : (
+      {showInitialLoader ? <LoadingScreen caption='Loading...' fullScreen={false} /> : (
         <Paper sx={{ maxWidth: '95%', margin: 'auto', overflow: 'hidden' ,height: '100%'}}>
           <AppBar
             position="static"
@@ -85,9 +89,17 @@ export default function Users({ isActive = true }) {
                   <TextField
                     fullWidth
                     placeholder="Search by name, email address, phone number, or user role."
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        setSearchTerm(searchInput);
+                        searchInputRef.current?.focus();
+                      }
+                    }}
                     variant="standard"
-                    disabled
+                    value={searchInput}
+                    inputRef={searchInputRef}
                   />
                 </Grid>
                 <Grid item>
@@ -106,7 +118,7 @@ export default function Users({ isActive = true }) {
               </Grid>
             </Toolbar>
           </AppBar>
-          <UsersTable loadingRowId={loadingRowId} isActive={isActive} />
+          <UsersTable loadingRowId={loadingRowId} isActive={isActive} searchTerm={searchTerm} />
         </Paper>
       )}
     </div>
