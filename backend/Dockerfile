@@ -11,6 +11,9 @@ COPY package*.json ./
 
 RUN npm install
 
+# Copy .env file explicitly
+COPY .env ./
+
 # Copy app source code
 COPY . .
 

@@ -37,23 +37,29 @@ export const getOverview = async (req, res, next) => {
     ]);
 
     res.json({
-      totalUsers,
-      activeUsers,
-      inactiveUsers: totalUsers - activeUsers,
-      totalApps,
-      activeApps,
-      inactiveApps: totalApps - activeApps,
-      totalRoles,
-      totalUserTypes,
-      activeSessions,
-      totalAdmins,
-      regularUsers: activeUsers - totalAdmins,
-      totalGoogleUsers,
-      totalMqttUsers
+      msg: 'Overview statistics retrieved successfully.',
+      data: {
+        totalUsers,
+        activeUsers,
+        inactiveUsers: totalUsers - activeUsers,
+        totalApps,
+        activeApps,
+        inactiveApps: totalApps - activeApps,
+        totalRoles,
+        totalUserTypes,
+        activeSessions,
+        totalAdmins,
+        regularUsers: activeUsers - totalAdmins,
+        totalGoogleUsers,
+        totalMqttUsers,
+      },
     });
   } catch (error) {
-    error.status = 400;
-    return next(error);
+    console.error('[analytics:getOverview] Failed to fetch overview statistics:', error);
+    return res.status(400).json({
+      msg: 'Failed to fetch overview statistics.',
+      error: error.message,
+    });
   }
 };
 
@@ -109,12 +115,18 @@ export const getUserGrowth = async (req, res, next) => {
     });
 
     res.json({
+      msg: 'User growth statistics retrieved successfully.',
+      data: {
       period: groupBy,
-      data: growthData
+        data: growthData,
+      },
     });
   } catch (error) {
-    error.status = 400;
-    return next(error);
+    console.error('[analytics:getUserGrowth] Failed to fetch user growth statistics:', error);
+    return res.status(400).json({
+      msg: 'Failed to fetch user growth statistics.',
+      error: error.message,
+    });
   }
 };
 
@@ -157,10 +169,16 @@ export const getAppUsage = async (req, res, next) => {
       userCount: parseInt(app.dataValues.userCount || 0)
     }));
 
-    res.json(formattedData);
+    res.json({
+      msg: 'App usage data retrieved successfully.',
+      data: formattedData,
+    });
   } catch (error) {
-    error.status = 400;
-    return next(error);
+    console.error('[analytics:getAppUsage] Failed to fetch app usage data:', error);
+    return res.status(400).json({
+      msg: 'Failed to fetch app usage data.',
+      error: error.message,
+    });
   }
 };
 
@@ -209,12 +227,18 @@ export const getActivityStats = async (req, res, next) => {
     }));
 
     res.json({
+      msg: 'Activity statistics retrieved successfully.',
+      data: {
       period: groupBy,
-      data: formattedData
+        data: formattedData,
+      },
     });
   } catch (error) {
-    error.status = 400;
-    return next(error);
+    console.error('[analytics:getActivityStats] Failed to fetch activity statistics:', error);
+    return res.status(400).json({
+      msg: 'Failed to fetch activity statistics.',
+      error: error.message,
+    });
   }
 };
 
@@ -239,10 +263,16 @@ export const getRoleDistribution = async (req, res, next) => {
       count: parseInt(item.count)
     }));
 
-    res.json(formattedData);
+    res.json({
+      msg: 'Role distribution retrieved successfully.',
+      data: formattedData,
+    });
   } catch (error) {
-    error.status = 400;
-    return next(error);
+    console.error('[analytics:getRoleDistribution] Failed to fetch role distribution:', error);
+    return res.status(400).json({
+      msg: 'Failed to fetch role distribution.',
+      error: error.message,
+    });
   }
 };
 
@@ -271,10 +301,16 @@ export const getOfficeDistribution = async (req, res, next) => {
       count: parseInt(item.count)
     }));
 
-    res.json(formattedData);
+    res.json({
+      msg: 'Office distribution retrieved successfully.',
+      data: formattedData,
+    });
   } catch (error) {
-    error.status = 400;
-    return next(error);
+    console.error('[analytics:getOfficeDistribution] Failed to fetch office distribution:', error);
+    return res.status(400).json({
+      msg: 'Failed to fetch office distribution.',
+      error: error.message,
+    });
   }
 };
 
@@ -312,10 +348,16 @@ export const getRecentActivity = async (req, res, next) => {
       } : null
     }));
 
-    res.json(formattedData);
+    res.json({
+      msg: 'Recent activity retrieved successfully.',
+      data: formattedData,
+    });
   } catch (error) {
-    error.status = 400;
-    return next(error);
+    console.error('[analytics:getRecentActivity] Failed to fetch recent activity:', error);
+    return res.status(400).json({
+      msg: 'Failed to fetch recent activity.',
+      error: error.message,
+    });
   }
 };
 
@@ -343,10 +385,16 @@ export const getTopActions = async (req, res, next) => {
       count: parseInt(item.count)
     }));
 
-    res.json(formattedData);
+    res.json({
+      msg: 'Top actions retrieved successfully.',
+      data: formattedData,
+    });
   } catch (error) {
-    error.status = 400;
-    return next(error);
+    console.error('[analytics:getTopActions] Failed to fetch top actions:', error);
+    return res.status(400).json({
+      msg: 'Failed to fetch top actions.',
+      error: error.message,
+    });
   }
 };
 

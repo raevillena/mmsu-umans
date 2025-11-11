@@ -1,4 +1,5 @@
 import {Apps, User, Roles, GoogleUser} from '../models/index.js';
+import { Op } from '@sequelize/core';
 import { logAction } from '../services/loggerService.js';
 
 // get app list
@@ -34,15 +35,33 @@ export const getAppsPaginated = async (req, res, next) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
+        const rawSearch = typeof req.query.search === 'string' ? req.query.search.trim() : '';
         
         // Support filtering by isActive status (defaults to true for backward compatibility)
         const isActive = req.query.isActive !== undefined 
             ? req.query.isActive === 'true' || req.query.isActive === true
             : true;
 
+        const likeTerm = rawSearch ? `%${rawSearch}%` : null;
+        let whereClause = { isActive };
+
+        if (likeTerm) {
+            const searchableColumns = ['name', 'ownerOffice', 'email', 'mobileNumber', 'url'];
+            whereClause = {
+                [Op.and]: [
+                    { isActive },
+                    {
+                        [Op.or]: searchableColumns.map((column) => ({
+                            [column]: { [Op.like]: likeTerm }
+                        })),
+                    },
+                ],
+            };
+        }
+
         if (!isNaN(limit) && limit > 0) {
             const { count, rows } = await Apps.findAndCountAll({
-                where: { isActive: isActive },
+                where: whereClause,
                 offset: offset,
                 limit: limit,
                 order: [['createdAt', 'DESC']],

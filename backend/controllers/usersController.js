@@ -1,6 +1,8 @@
 // Description: All user related routes are defined here
 import {User, Apps, GoogleUser, Roles, UserTypes} from '../models/index.js';
+import { Op, sql, where, fn, col } from '@sequelize/core';
 import { logAction } from '../services/loggerService.js';
+import util from 'util';
 
 
 // get all users
@@ -28,20 +30,38 @@ export const getUsers = async (req, res, next) => {
 // GET /api/users/paginated
 export const getUsersPaginated = async (req, res, next) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = parseInt(req.query.limit, 10) || 10;
         const offset = (page - 1) * limit;
+        const rawSearch = typeof req.query.search === 'string' ? req.query.search.trim() : '';
         
         // Support filtering by isActive status (defaults to true for backward compatibility)
         const isActive = req.query.isActive !== undefined 
             ? req.query.isActive === 'true' || req.query.isActive === true
             : true;
 
+        const likeTerm = rawSearch ? `%${rawSearch}%` : null;
+        let whereClause = { isActive }; 
+        if (likeTerm) {
+            const searchableColumns = ['firstName', 'lastName', 'email', 'mobileNo', 'office', 'role'];
+            
+            const orConditions = searchableColumns.map((column) => 
+                where(col(column), Op.like, likeTerm)
+            );
+            
+            whereClause = {
+                [Op.and]: [
+                    where(col('isActive'), Op.eq, isActive),
+                    { [Op.or]: orConditions }
+                ]
+            };
+        }
+
         if (!isNaN(limit) && limit > 0) {
             const { count, rows } = await User.findAndCountAll({
-                where: { isActive: isActive },
-                offset: offset,
-                limit: limit,
+                where: whereClause,
+                offset,
+                limit,
                 order: [['createdAt', 'DESC']],
             });
             return res.json({
