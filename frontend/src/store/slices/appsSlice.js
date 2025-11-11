@@ -171,28 +171,62 @@ const appsSlice = createSlice({
           })
           .addCase(updateApp.fulfilled, (state, action) => {
             state.loadingRowId = null;
+            const updatedApp = action.payload;
+            const newIsActive = updatedApp.isActive;
+            
             // Update apps array for reference data
             if (state.apps[0] !== 'empty') {
               state.apps = state.apps.map((app) =>
-                app.id === action.payload.id ? action.payload : app
+                app.id === updatedApp.id ? updatedApp : app
               );
             }
-            // Update active paginated cache if app exists in any cached page
+            
+            // Check if isActive status changed by looking at both caches
+            let wasInActive = false;
+            let wasInInactive = false;
+            
+            // Check active cache
             Object.keys(state.paginatedPagesActive).forEach(page => {
               const pageApps = state.paginatedPagesActive[page];
-              const appIndex = pageApps.findIndex(a => a.id === action.payload.id);
+              const appIndex = pageApps.findIndex(a => a.id === updatedApp.id);
               if (appIndex !== -1) {
-                state.paginatedPagesActive[page][appIndex] = action.payload;
+                wasInActive = true;
+                // If new status is inactive, remove from active cache
+                if (!newIsActive) {
+                  state.paginatedPagesActive[page] = pageApps.filter(a => a.id !== updatedApp.id);
+                } else {
+                  // If still active, update the record
+                  state.paginatedPagesActive[page][appIndex] = updatedApp;
+                }
               }
             });
-            // Update inactive paginated cache if app exists in any cached page
+            
+            // Check inactive cache
             Object.keys(state.paginatedPagesInactive).forEach(page => {
               const pageApps = state.paginatedPagesInactive[page];
-              const appIndex = pageApps.findIndex(a => a.id === action.payload.id);
+              const appIndex = pageApps.findIndex(a => a.id === updatedApp.id);
               if (appIndex !== -1) {
-                state.paginatedPagesInactive[page][appIndex] = action.payload;
+                wasInInactive = true;
+                // If new status is active, remove from inactive cache
+                if (newIsActive) {
+                  state.paginatedPagesInactive[page] = pageApps.filter(a => a.id !== updatedApp.id);
+                } else {
+                  // If still inactive, update the record
+                  state.paginatedPagesInactive[page][appIndex] = updatedApp;
+                }
               }
             });
+            
+            // If status changed, invalidate the target cache to trigger refetch
+            if (wasInActive && !newIsActive) {
+              // Moved from active to inactive - invalidate active cache
+              state.paginatedPagesActive = {};
+              state.loadedPagesActive = [];
+            } else if (wasInInactive && newIsActive) {
+              // Moved from inactive to active - invalidate inactive cache
+              state.paginatedPagesInactive = {};
+              state.loadedPagesInactive = [];
+            }
           })
           .addCase(updateApp.rejected, (state, action) => {
             state.loadingRowId = null;

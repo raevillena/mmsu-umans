@@ -21,6 +21,7 @@ import GoogleIcon from '@mui/icons-material/Google';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
 import WorkIcon from '@mui/icons-material/Work';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 import { useNavigate, NavLink, useLocation } from "react-router-dom";
 import { Typography } from '@mui/material';
@@ -55,6 +56,7 @@ const categories = [
         icon: <SettingsInputComponentIcon />,
         path:'/sessions'
       },
+      { id: 'Trash', icon: <DeleteIcon />, path:'/trash' },
     ],
   },
   {

@@ -19,6 +19,7 @@ const Contact = lazy(() => import("./pages/Dashboard/Contact"));
 const NotFound = lazy(() => import("./pages/Dashboard/NotFound"));
 const Profile = lazy(() => import("./pages/Dashboard/Profile"));
 const PasswordReset = lazy(() => import("./pages/Dashboard/PasswordReset"));
+const Trash = lazy(() => import("./pages/Dashboard/trash/TrashParent"));
 
 const AppRoutes = () => {
   return (
@@ -80,6 +81,11 @@ const AppRoutes = () => {
             <Route path = "/profile" element={
               <Suspense fallback={<LoadingScreen caption='Loading...' fullScreen={false} />}>
                 <Profile />
+              </Suspense>
+            } />
+            <Route path = "/trash" element={
+              <Suspense fallback={<LoadingScreen caption='Loading...' fullScreen={false} />}>
+                <Trash />
               </Suspense>
             } />
           </Route>

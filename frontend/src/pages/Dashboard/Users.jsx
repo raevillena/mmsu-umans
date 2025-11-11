@@ -10,9 +10,6 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import Box from '@mui/material/Box';
 import SearchIcon from '@mui/icons-material/Search';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
@@ -30,13 +27,11 @@ import LoadingScreen from "../../components/LoadingScreen";
 import AddUserDialog from "../../components/dialogs/AddUserDialog";
 
 
-export default function Users() {
+export default function Users({ isActive = true }) {
   const { loading, loadingRowId, loadedPagesActive, loadedPagesInactive } = useSelector((state) => state.users);
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
-  const [tabValue, setTabValue] = useState(0); // 0 = Active, 1 = Inactive
-  const isActive = tabValue === 0;
 
   // Load first page on mount if not cached
   useEffect(() => {
@@ -52,10 +47,6 @@ export default function Users() {
     dispatch(getUsersPaginated({ page: 1, isActive }));
     setSearchTerm("");  // Clear the search term
   }
-
-  const handleTabChange = (_, newValue) => {
-    setTabValue(newValue);
-  };
 
   //add user dialog open close functions
   const handleOpen = () => {
@@ -100,10 +91,12 @@ export default function Users() {
                   />
                 </Grid>
                 <Grid item>
-                  <Button variant="contained" onClick={handleOpen} sx={{ mr: 1 }}>
-                    Add user
-                  </Button>
-                  <AddUserDialog open={open} handleClose={handleClose} onSubmit={handleAddUser} />
+                  {isActive && (
+                    <Button variant="contained" onClick={handleOpen} sx={{ mr: 1 }}>
+                      Add user
+                    </Button>
+                  )}
+                  {isActive && <AddUserDialog open={open} handleClose={handleClose} onSubmit={handleAddUser} />}
                   <Tooltip title="Reload">
                     <IconButton onClick={handleReload}> 
                       <RefreshIcon color="inherit" sx={{ display: 'block' }} />
@@ -113,12 +106,6 @@ export default function Users() {
               </Grid>
             </Toolbar>
           </AppBar>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="users tabs">
-              <Tab label="Active" />
-              <Tab label="Inactive" />
-            </Tabs>
-          </Box>
           <UsersTable loadingRowId={loadingRowId} isActive={isActive} />
         </Paper>
       )}

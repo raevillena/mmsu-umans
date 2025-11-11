@@ -19,7 +19,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AppsTable from "../../components/tables/AppsTable";
 
 //functions to dispatch actions
-import { getApps, createApp } from '../../store/slices/appsSlice';
+import { getAppsPaginated, createApp, clearPaginatedCache } from '../../store/slices/appsSlice';
 
 //Custom loading screen
 import LoadingScreen from "../../components/LoadingScreen";
@@ -29,29 +29,24 @@ import LoadingScreen from "../../components/LoadingScreen";
 import AddAppDialog from "../../components/dialogs/AddAppDialog";
 
 
-export default function Apps() {
-  const {apps, loading, loadingRowId } = useSelector((state) => state.apps);
+export default function Apps({ isActive = true }) {
+  const { loading, loadingRowId, loadedPagesActive, loadedPagesInactive } = useSelector((state) => state.apps);
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
 
+  // Load first page on mount if not cached
   useEffect(() => {
-    if (apps[0] === 'empty') {
-      dispatch(getApps());
+    const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
+    if (!loadedPages.includes(1)) {
+      dispatch(getAppsPaginated({ page: 1, isActive }));
     }
-  }
-  ,[apps]);
+  }, [loadedPagesActive, loadedPagesInactive, isActive, dispatch]);
 
-  // Filter Apps based on firstName, lastName, or email
-  const filteredApps = apps.filter((app) =>
-    `${app.name} ${app.url} ${app.ownerOffice} ${app.email} ${app.mobileNumber}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  );
-
-  //reload Apps
+  //reload Apps - clear cache and reload first page
   const handleReload = () => {
-    dispatch(getApps());
+    dispatch(clearPaginatedCache());
+    dispatch(getAppsPaginated({ page: 1, isActive }));
     setSearchTerm("");  // Clear the search term
   }
 
@@ -71,9 +66,11 @@ export default function Apps() {
   };
 
 
+  const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
+
   return (
     <div>
-      {loading || apps[0] === 'empty'? <LoadingScreen caption='Loading...' fullScreen={false} /> : (
+      {loading && !loadedPages.includes(1) ? <LoadingScreen caption='Loading...' fullScreen={false} /> : (
         <Paper sx={{ maxWidth: '95%', margin: 'auto', overflow: 'hidden' ,height: '100%'}}>
           <AppBar
             position="static"
@@ -96,10 +93,12 @@ export default function Apps() {
                   />
                 </Grid>
                 <Grid item>
-                  <Button variant="contained" onClick={handleOpen} sx={{ mr: 1 }}>
-                    Add New App
-                  </Button>
-                  <AddAppDialog open={open} handleClose={handleClose} onSubmit={handleAddApp} />
+                  {isActive && (
+                    <Button variant="contained" onClick={handleOpen} sx={{ mr: 1 }}>
+                      Add New App
+                    </Button>
+                  )}
+                  {isActive && <AddAppDialog open={open} handleClose={handleClose} onSubmit={handleAddApp} />}
                   <Tooltip title="Reload">
                     <IconButton onClick={handleReload}> 
                       <RefreshIcon color="inherit" sx={{ display: 'block' }} />
@@ -109,7 +108,7 @@ export default function Apps() {
               </Grid>
             </Toolbar>
           </AppBar>
-          <AppsTable apps = {filteredApps} loadingRowId = {loadingRowId} />
+          <AppsTable loadingRowId={loadingRowId} isActive={isActive} />
         </Paper>
       )}
     </div>

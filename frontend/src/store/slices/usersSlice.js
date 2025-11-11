@@ -188,28 +188,62 @@ const usersSlice = createSlice({
           })
           .addCase(updateUser.fulfilled, (state, action) => {
             state.loadingRowId = null;
+            const updatedUser = action.payload;
+            const newIsActive = updatedUser.isActive;
+            
             // Update users array for reference data (dropdowns, etc.)
             if (state.users[0] !== 'empty') {
               state.users = state.users.map((user) =>
-                user.id === action.payload.id ? action.payload : user
+                user.id === updatedUser.id ? updatedUser : user
               );
             }
-            // Update active paginated cache if user exists in any cached page
+            
+            // Check if isActive status changed by looking at both caches
+            let wasInActive = false;
+            let wasInInactive = false;
+            
+            // Check active cache
             Object.keys(state.paginatedPagesActive).forEach(page => {
               const pageUsers = state.paginatedPagesActive[page];
-              const userIndex = pageUsers.findIndex(u => u.id === action.payload.id);
+              const userIndex = pageUsers.findIndex(u => u.id === updatedUser.id);
               if (userIndex !== -1) {
-                state.paginatedPagesActive[page][userIndex] = action.payload;
+                wasInActive = true;
+                // If new status is inactive, remove from active cache
+                if (!newIsActive) {
+                  state.paginatedPagesActive[page] = pageUsers.filter(u => u.id !== updatedUser.id);
+                } else {
+                  // If still active, update the record
+                  state.paginatedPagesActive[page][userIndex] = updatedUser;
+                }
               }
             });
-            // Update inactive paginated cache if user exists in any cached page
+            
+            // Check inactive cache
             Object.keys(state.paginatedPagesInactive).forEach(page => {
               const pageUsers = state.paginatedPagesInactive[page];
-              const userIndex = pageUsers.findIndex(u => u.id === action.payload.id);
+              const userIndex = pageUsers.findIndex(u => u.id === updatedUser.id);
               if (userIndex !== -1) {
-                state.paginatedPagesInactive[page][userIndex] = action.payload;
+                wasInInactive = true;
+                // If new status is active, remove from inactive cache
+                if (newIsActive) {
+                  state.paginatedPagesInactive[page] = pageUsers.filter(u => u.id !== updatedUser.id);
+                } else {
+                  // If still inactive, update the record
+                  state.paginatedPagesInactive[page][userIndex] = updatedUser;
+                }
               }
             });
+            
+            // If status changed, invalidate the target cache to trigger refetch
+            if (wasInActive && !newIsActive) {
+              // Moved from active to inactive - invalidate active cache
+              state.paginatedPagesActive = {};
+              state.loadedPagesActive = [];
+            } else if (wasInInactive && newIsActive) {
+              // Moved from inactive to active - invalidate inactive cache
+              state.paginatedPagesInactive = {};
+              state.loadedPagesInactive = [];
+            }
           })
           .addCase(updateUser.rejected, (state, action) => {
             state.loadingRowId = null;

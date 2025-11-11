@@ -6,13 +6,24 @@ import {
 import RoleRow from "./RoleRow";
 import { getRolesPaginated } from "../../store/slices/rolesSlice";
 
-const RolesTable = ({ apps, users, userTypes, loadingRowId }) => {
+const RolesTable = ({ apps, users, userTypes, loadingRowId, isActive = true }) => {
   const dispatch = useDispatch();
-  const { paginatedPages, totalPages, loadedPages, loading } = useSelector((state) => state.roles);
+  const { 
+    paginatedPagesActive, 
+    paginatedPagesInactive, 
+    totalPagesActive, 
+    totalPagesInactive, 
+    loadedPagesActive, 
+    loadedPagesInactive, 
+    loading 
+  } = useSelector((state) => state.roles);
   const [page, setPage] = useState(1);
 
-  // Get current page data from cache (ensure page is a number)
+  // Get current page data from cache based on active status
   const pageNum = Number(page);
+  const paginatedPages = isActive ? paginatedPagesActive : paginatedPagesInactive;
+  const totalPages = isActive ? totalPagesActive : totalPagesInactive;
+  const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
   const rawRoles = paginatedPages[pageNum] || [];
 
   // Enrich roles with display names (appName, userName)
@@ -34,13 +45,18 @@ const RolesTable = ({ apps, users, userTypes, loadingRowId }) => {
     });
   }, [rawRoles, users, apps]);
 
+  // Reset page when isActive changes
+  useEffect(() => {
+    setPage(1);
+  }, [isActive]);
+
   // Fetch page if not cached
   useEffect(() => {
     const pageNum = Number(page);
     if (!loadedPages.includes(pageNum) && !loading) {
-      dispatch(getRolesPaginated(pageNum));
+      dispatch(getRolesPaginated({ page: pageNum, isActive }));
     }
-  }, [page, loadedPages, loading, dispatch]);
+  }, [page, loadedPages, loading, dispatch, isActive]);
 
   const handlePageChange = (_, value) => {
     setPage(value);

@@ -30,8 +30,8 @@ import LoadingScreen from "../../components/LoadingScreen";
 import AddRoleDialog from "../../components/dialogs/AddRoleDialog";
 
 
-export default function Roles() {
-  const { loading, loadingRowId, loadedPages } = useSelector((state) => state.roles);
+export default function Roles({ isActive = true }) {
+  const { loading, loadingRowId, loadedPagesActive, loadedPagesInactive } = useSelector((state) => state.roles);
   const users = useSelector((state) => state.users.users);
   const apps = useSelector((state) => state.apps.apps);
   const userTypes = useSelector((state) => state.userTypes.userTypes);
@@ -41,8 +41,9 @@ export default function Roles() {
 
   // Load first page on mount if not cached
   useEffect(() => {
+    const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
     if (!loadedPages.includes(1)) {
-      dispatch(getRolesPaginated(1));
+      dispatch(getRolesPaginated({ page: 1, isActive }));
     }
     if (users[0] === 'empty') {
       dispatch(getUsers());
@@ -53,12 +54,12 @@ export default function Roles() {
     if (userTypes[0] === 'empty') {
       dispatch(getUserTypes());
     }
-  }, [loadedPages, users, apps, userTypes, dispatch]);
+  }, [loadedPagesActive, loadedPagesInactive, isActive, users, apps, userTypes, dispatch]);
 
   //reload roles - clear cache and reload first page
   const handleReload = () => {
     dispatch(clearPaginatedCache());
-    dispatch(getRolesPaginated(1));
+    dispatch(getRolesPaginated({ page: 1, isActive }));
   }
 
   //add user dialog open close functions
@@ -76,6 +77,8 @@ export default function Roles() {
     dispatch(addRole(roleData)); // Dispatch the action to add a user
     handleClose(); // Close the dialog
   };
+
+  const loadedPages = isActive ? loadedPagesActive : loadedPagesInactive;
 
   return (
     <div>
@@ -101,10 +104,12 @@ export default function Roles() {
                   />
                 </Grid>
                 <Grid item>
-                  <Button variant="contained" onClick={handleOpen} sx={{ mr: 1 }}>
-                    Add New Role
-                  </Button>
-                  <AddRoleDialog open={open} handleClose={handleClose} onSubmit={handleAddApp} users={users} apps={apps} userTypes={userTypes}/>
+                  {isActive && (
+                    <Button variant="contained" onClick={handleOpen} sx={{ mr: 1 }}>
+                      Add New Role
+                    </Button>
+                  )}
+                  {isActive && <AddRoleDialog open={open} handleClose={handleClose} onSubmit={handleAddApp} users={users} apps={apps} userTypes={userTypes}/>}
                   <Tooltip title="Reload">
                     <IconButton onClick={handleReload}> 
                       <RefreshIcon color="inherit" sx={{ display: 'block' }} />
@@ -114,7 +119,7 @@ export default function Roles() {
               </Grid>
             </Toolbar>
           </AppBar>
-          <RolesTable users={users} apps={apps} userTypes={userTypes} loadingRowId={loadingRowId} />
+          <RolesTable users={users} apps={apps} userTypes={userTypes} loadingRowId={loadingRowId} isActive={isActive} />
         </Paper>
       )}
     </div>
