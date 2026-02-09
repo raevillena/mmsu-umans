@@ -65,12 +65,27 @@ export const login = async (req, res, next) => {
             error.status = 401;
             return next(error);
         }
-        const { accessToken, refreshToken } = await generateTokens(user.id, user.role, user.role==='admin'? 0 :appId);
+
+        if(!appId){
+            const error = new Error('App ID is required');
+            error.status = 400;
+            return next(error);
+        }
+
+        const { accessToken, refreshToken } = await generateTokens(user.id, user.role, appId);
         
         // Remove password from response
         const userResponse = user.toJSON();
         delete userResponse.password;
         delete userResponse.role;
+
+        //put the refresh token in the cookie
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,  // Prevent JavaScript access
+            secure: true, //process.env.NODE_ENV === "production", // Use HTTPS in production
+            sameSite: "None", //Strict to same site
+            path: "/api/auth",  // Restrict cookie to auth routes
+        });
 
         res.status(200).json({
             msg: 'Login Successfull',

@@ -143,7 +143,7 @@ export const getAppUsage = async (req, res, next) => {
         'name',
         'ownerOffice',
         'isActive',
-        [Sequelize.fn('COUNT', Sequelize.col('Users.id')), 'userCount']
+        [Sequelize.fn('COUNT', Sequelize.literal('`users`.`id`')), 'userCount']
       ],
       include: [{
         model: User,
