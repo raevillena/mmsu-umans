@@ -6,10 +6,11 @@ import { usersRoute, appsRoute, roleRoute, authRoute, googleRoute, userTypesRout
 import logger from './middleware/logger.js';
 import errorHandler from './middleware/error.js';
 import notFound from './middleware/notFound.js';
-import cors from 'cors'
+import { corsMiddleware } from './middleware/cors.js';
 import cookieParser from 'cookie-parser'
 import { swaggerSpec } from './docs/swagger.js';
 import swaggerUi from 'swagger-ui-express';
+
 
 
 //Get env from .env file
@@ -30,18 +31,7 @@ const app = express();
 //peek the allowed origins
 console.log(allowedOrigins)
 
-//handle cors
-app.use(cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
-  }));
+app.use(corsMiddleware);
 
 //Body parser middleware
 app.use(express.json());
